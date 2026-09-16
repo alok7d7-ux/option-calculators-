@@ -10,14 +10,18 @@ spread_type = st.selectbox("Spread Type", ["Bull Put Spread", "Bear Call Spread"
 
 # Separate Premium Inputs
 col_sell, col_buy = st.columns(2)
-sell_premium = col_sell.number_input("Sold Leg Premium (₹/pts)", min_value=0.0, value=50.0, step=0.5)
-buy_premium = col_buy.number_input("Bought Leg Premium (₹/pts)", min_value=0.0, value=30.0, step=0.5)
+sell_premium = col_sell.number_input("Sold Leg Premium (₹/pts)", min_value=0.0, value=200.0, step=0.5)
+buy_premium = col_buy.number_input("Bought Leg Premium (₹/pts)", min_value=0.0, value=100.0, step=0.5)
 
 # Calculate Net Credit Automatically
-net_credit = sell_premium - buy_premium
+net_credit = max(0.0, sell_premium - buy_premium)
 st.info(f"**Net Credit Received:** ₹{net_credit:.2f} per point")
 
-strike_width = st.number_input("Strike Width (₹/pts)", min_value=float(max(0.5, net_credit)), value=50.0, step=1.0)
+# Dynamically set Strike Width default higher than net_credit to prevent crash
+min_width = max(1.0, float(net_credit))
+default_width = max(min_width + 10.0, 50.0)
+
+strike_width = st.number_input("Strike Width (₹/pts)", min_value=min_width, value=default_width, step=1.0)
 lot_size = st.number_input("Total Contract Quantity / Lots", min_value=1, value=1, step=1)
 multiplier = st.number_input("Lot Size / Multiplier (e.g., 25/75 for Nifty)", min_value=1, value=75, step=1)
 
@@ -31,11 +35,17 @@ else:
     sl_spot = st.number_input("Stop-Loss Index Spot Level (Higher)", min_value=0.0, value=entry_spot + 50.0, step=10.0)
     pts_move = sl_spot - entry_spot
 
+# Slider bounds safety
+min_slider = float(net_credit)
+max_slider = float(max(strike_width, net_credit + 0.1))
+default_slider = min(float(net_credit * 2.0), max_slider)
+default_slider = max(default_slider, min_slider)
+
 est_spread_cost = st.slider(
     "Estimated Spread Cost at SL Exit (₹/pts)", 
-    min_value=float(max(0.0, net_credit)), 
-    max_value=float(strike_width), 
-    value=min(float(net_credit * 2.0), float(strike_width)), 
+    min_value=min_slider, 
+    max_value=max_slider, 
+    value=default_slider, 
     step=0.5
 )
 
